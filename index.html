@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+        <title>死亡迷宫</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+            }
+            html {
+                font-size: 12px;
+            }
+            body{
+                width: 100%;
+                height: 100%;
+            }
+            #mazeWrapper{
+                margin: 10px;
+            }
+            #maze {
+                display: grid;
+                grid-template-columns: 1em 1em 1em 1em 1em 1em 1em 1em 1em 1em 1em 1em 1em 1em 1em 1em 1em 1em 1em 1em; 
+                grid-template-rows: 1em 1em 1em 1em 1em 1em 1em 1em 1em 1em 1em 1em 1em 1em 1em 1em 1em 1em 1em 1em; 
+
+            }
+            .box {
+                background-color: #444;
+                color: #fff;
+                border: 2px #fff;
+                font-size: 20%;
+                text-align: center;
+            }
+            .box.state {
+                background-color: #fff;
+                color: #fff;
+            }
+            .box.route {
+                background-color: rgb(240, 216, 216);
+                color: #fff;
+            }
+            #controls{
+                width: 100%;
+                text-align: center;
+            }
+            button {
+                background-color: #444;
+                color: #fff;
+                border: none;
+            }
+            #draw-controls{
+                margin-bottom: 0em;
+                margin-top: 1em;
+            }
+            #draw-controls button{
+                width: 7em;
+                height: 2em;
+                margin: 0.5em;
+            }
+            #start{
+                width: 20em;
+                height: 3em;
+                margin-left: auto;
+                margin-right: auto;
+                margin: 1em;
+            }
+            #robots-area{
+                font-size: 60%;
+                margin: 1em;
+            }
+            #robots-area>#progress-info {
+                margin: 0.5em;
+                font-size: 1.2em;
+            }
+            #escapedRobots{
+                border: none;
+                outline: none;
+                width: 10em;
+                margin: auto;
+                overflow:visible;
+                min-height: 2em;
+                min-width: 8em;
+                -webkit-appearance: none;
+            }
+            #escapedRobots>option{
+                margin-bottom: 0.2em;
+            }
+        </style>
+    </head>
+
+    <body onload="initPage()">
+        <div id="mazeWrapper">
+            <div id="maze"  v-on:touchstart="onTouch($event)" v-on:touchmove="onTouch($event)"  v-on:touchend="onTouch($event)">
+                    <div class="box" v-bind:class="{state:item.state,route:item.route}" v-bind:id="item.id" v-for="item in items" >{{item.id}}</div> 
+            </div>
+            <div id="controls">
+                <div id="draw-controls">
+                    <button v-on:click="onDig()">挖通道</button>
+                    <button v-on:click="onFill()">填通道</button>
+                </div>
+                <button id="start" v-on:click="onStart()" >开始死亡竞技</button>
+            </div>
+            <div id="robots-area">
+                <div id="progress-info">{{msg}}</div>
+                <select id="escapedRobots" v-show="escaped" size="10" v-model="selectedEscapedRobot">
+                    <option v-for="(robot,index) in escapedRobots" v-bind:id="'robot'+index" v-bind:value="robot.id"><span>{{robot.id}}号: </span> <span v-bind:id="'r-path'+index">{{robot.stepCount}}步</span></option>
+                </select>
+            </div>
+        </div>
+
+    </body>
+    <!-- <script src="https://cdn.bootcss.com/vue/2.5.16/vue.js"></script> -->
+    <script src="./lib/vue.js"></script>
+    <script>
+        function initPage(){
+            //动态调整缩放
+            var html=document.documentElement;
+            html.style.fontSize=(html.clientWidth - 20)/20+'px';
+
+            //初始化迷宫数据
+            var temp = {id:0,row:0,col:0,state:false};
+            var mazeData = [{"id":0,"row":0,"col":0,"state":false},{"id":1,"row":0,"col":1,"state":false},{"id":2,"row":0,"col":2,"state":false},{"id":3,"row":0,"col":3,"state":false},{"id":4,"row":0,"col":4,"state":false},{"id":5,"row":0,"col":5,"state":1},{"id":6,"row":0,"col":6,"state":false},{"id":7,"row":0,"col":7,"state":false},{"id":8,"row":0,"col":8,"state":false},{"id":9,"row":0,"col":9,"state":false},{"id":10,"row":0,"col":10,"state":false},{"id":11,"row":0,"col":11,"state":false},{"id":12,"row":0,"col":12,"state":false},{"id":13,"row":0,"col":13,"state":false},{"id":14,"row":0,"col":14,"state":false},{"id":15,"row":0,"col":15,"state":false},{"id":16,"row":0,"col":16,"state":false},{"id":17,"row":0,"col":17,"state":false},{"id":18,"row":0,"col":18,"state":false},{"id":19,"row":0,"col":19,"state":false},{"id":20,"row":1,"col":0,"state":false},{"id":21,"row":1,"col":1,"state":1},{"id":22,"row":1,"col":2,"state":1},{"id":23,"row":1,"col":3,"state":false},{"id":24,"row":1,"col":4,"state":false},{"id":25,"row":1,"col":5,"state":1},{"id":26,"row":1,"col":6,"state":1},{"id":27,"row":1,"col":7,"state":false},{"id":28,"row":1,"col":8,"state":false},{"id":29,"row":1,"col":9,"state":false},{"id":30,"row":1,"col":10,"state":false},{"id":31,"row":1,"col":11,"state":false},{"id":32,"row":1,"col":12,"state":false},{"id":33,"row":1,"col":13,"state":1},{"id":34,"row":1,"col":14,"state":1},{"id":35,"row":1,"col":15,"state":1},{"id":36,"row":1,"col":16,"state":1},{"id":37,"row":1,"col":17,"state":1},{"id":38,"row":1,"col":18,"state":false},{"id":39,"row":1,"col":19,"state":false},{"id":40,"row":2,"col":0,"state":false},{"id":41,"row":2,"col":1,"state":1},{"id":42,"row":2,"col":2,"state":1},{"id":43,"row":2,"col":3,"state":1},{"id":44,"row":2,"col":4,"state":false},{"id":45,"row":2,"col":5,"state":false},{"id":46,"row":2,"col":6,"state":1},{"id":47,"row":2,"col":7,"state":1},{"id":48,"row":2,"col":8,"state":1},{"id":49,"row":2,"col":9,"state":1},{"id":50,"row":2,"col":10,"state":1},{"id":51,"row":2,"col":11,"state":1},{"id":52,"row":2,"col":12,"state":1},{"id":53,"row":2,"col":13,"state":1},{"id":54,"row":2,"col":14,"state":false},{"id":55,"row":2,"col":15,"state":false},{"id":56,"row":2,"col":16,"state":false},{"id":57,"row":2,"col":17,"state":1},{"id":58,"row":2,"col":18,"state":false},{"id":59,"row":2,"col":19,"state":false},{"id":60,"row":3,"col":0,"state":false},{"id":61,"row":3,"col":1,"state":1},{"id":62,"row":3,"col":2,"state":false},{"id":63,"row":3,"col":3,"state":false},{"id":64,"row":3,"col":4,"state":false},{"id":65,"row":3,"col":5,"state":false},{"id":66,"row":3,"col":6,"state":false},{"id":67,"row":3,"col":7,"state":false},{"id":68,"row":3,"col":8,"state":false},{"id":69,"row":3,"col":9,"state":false},{"id":70,"row":3,"col":10,"state":false},{"id":71,"row":3,"col":11,"state":false},{"id":72,"row":3,"col":12,"state":false},{"id":73,"row":3,"col":13,"state":true},{"id":74,"row":3,"col":14,"state":false},{"id":75,"row":3,"col":15,"state":false},{"id":76,"row":3,"col":16,"state":false},{"id":77,"row":3,"col":17,"state":1},{"id":78,"row":3,"col":18,"state":1},{"id":79,"row":3,"col":19,"state":false},{"id":80,"row":4,"col":0,"state":false},{"id":81,"row":4,"col":1,"state":1},{"id":82,"row":4,"col":2,"state":false},{"id":83,"row":4,"col":3,"state":false},{"id":84,"row":4,"col":4,"state":false},{"id":85,"row":4,"col":5,"state":false},{"id":86,"row":4,"col":6,"state":1},{"id":87,"row":4,"col":7,"state":false},{"id":88,"row":4,"col":8,"state":false},{"id":89,"row":4,"col":9,"state":1},{"id":90,"row":4,"col":10,"state":false},{"id":91,"row":4,"col":11,"state":false},{"id":92,"row":4,"col":12,"state":false},{"id":93,"row":4,"col":13,"state":1},{"id":94,"row":4,"col":14,"state":false},{"id":95,"row":4,"col":15,"state":false},{"id":96,"row":4,"col":16,"state":false},{"id":97,"row":4,"col":17,"state":1},{"id":98,"row":4,"col":18,"state":1},{"id":99,"row":4,"col":19,"state":false},{"id":100,"row":5,"col":0,"state":false},{"id":101,"row":5,"col":1,"state":1},{"id":102,"row":5,"col":2,"state":1},{"id":103,"row":5,"col":3,"state":1},{"id":104,"row":5,"col":4,"state":1},{"id":105,"row":5,"col":5,"state":1},{"id":106,"row":5,"col":6,"state":1},{"id":107,"row":5,"col":7,"state":1},{"id":108,"row":5,"col":8,"state":1},{"id":109,"row":5,"col":9,"state":1},{"id":110,"row":5,"col":10,"state":1},{"id":111,"row":5,"col":11,"state":1},{"id":112,"row":5,"col":12,"state":1},{"id":113,"row":5,"col":13,"state":1},{"id":114,"row":5,"col":14,"state":1},{"id":115,"row":5,"col":15,"state":1},{"id":116,"row":5,"col":16,"state":1},{"id":117,"row":5,"col":17,"state":1},{"id":118,"row":5,"col":18,"state":false},{"id":119,"row":5,"col":19,"state":false},{"id":120,"row":6,"col":0,"state":false},{"id":121,"row":6,"col":1,"state":false},{"id":122,"row":6,"col":2,"state":1},{"id":123,"row":6,"col":3,"state":false},{"id":124,"row":6,"col":4,"state":1},{"id":125,"row":6,"col":5,"state":false},{"id":126,"row":6,"col":6,"state":false},{"id":127,"row":6,"col":7,"state":false},{"id":128,"row":6,"col":8,"state":1},{"id":129,"row":6,"col":9,"state":false},{"id":130,"row":6,"col":10,"state":false},{"id":131,"row":6,"col":11,"state":1},{"id":132,"row":6,"col":12,"state":false},{"id":133,"row":6,"col":13,"state":false},{"id":134,"row":6,"col":14,"state":false},{"id":135,"row":6,"col":15,"state":false},{"id":136,"row":6,"col":16,"state":false},{"id":137,"row":6,"col":17,"state":false},{"id":138,"row":6,"col":18,"state":false},{"id":139,"row":6,"col":19,"state":false},{"id":140,"row":7,"col":0,"state":false},{"id":141,"row":7,"col":1,"state":false},{"id":142,"row":7,"col":2,"state":1},{"id":143,"row":7,"col":3,"state":false},{"id":144,"row":7,"col":4,"state":1},{"id":145,"row":7,"col":5,"state":1},{"id":146,"row":7,"col":6,"state":false},{"id":147,"row":7,"col":7,"state":false},{"id":148,"row":7,"col":8,"state":true},{"id":149,"row":7,"col":9,"state":false},{"id":150,"row":7,"col":10,"state":false},{"id":151,"row":7,"col":11,"state":1},{"id":152,"row":7,"col":12,"state":1},{"id":153,"row":7,"col":13,"state":1},{"id":154,"row":7,"col":14,"state":1},{"id":155,"row":7,"col":15,"state":1},{"id":156,"row":7,"col":16,"state":1},{"id":157,"row":7,"col":17,"state":1},{"id":158,"row":7,"col":18,"state":1},{"id":159,"row":7,"col":19,"state":false},{"id":160,"row":8,"col":0,"state":false},{"id":161,"row":8,"col":1,"state":false},{"id":162,"row":8,"col":2,"state":1},{"id":163,"row":8,"col":3,"state":false},{"id":164,"row":8,"col":4,"state":false},{"id":165,"row":8,"col":5,"state":1},{"id":166,"row":8,"col":6,"state":false},{"id":167,"row":8,"col":7,"state":false},{"id":168,"row":8,"col":8,"state":true},{"id":169,"row":8,"col":9,"state":false},{"id":170,"row":8,"col":10,"state":false},{"id":171,"row":8,"col":11,"state":1},{"id":172,"row":8,"col":12,"state":false},{"id":173,"row":8,"col":13,"state":false},{"id":174,"row":8,"col":14,"state":false},{"id":175,"row":8,"col":15,"state":false},{"id":176,"row":8,"col":16,"state":false},{"id":177,"row":8,"col":17,"state":false},{"id":178,"row":8,"col":18,"state":1},{"id":179,"row":8,"col":19,"state":false},{"id":180,"row":9,"col":0,"state":false},{"id":181,"row":9,"col":1,"state":false},{"id":182,"row":9,"col":2,"state":false},{"id":183,"row":9,"col":3,"state":false},{"id":184,"row":9,"col":4,"state":false},{"id":185,"row":9,"col":5,"state":false},{"id":186,"row":9,"col":6,"state":false},{"id":187,"row":9,"col":7,"state":false},{"id":188,"row":9,"col":8,"state":true},{"id":189,"row":9,"col":9,"state":false},{"id":190,"row":9,"col":10,"state":false},{"id":191,"row":9,"col":11,"state":true},{"id":192,"row":9,"col":12,"state":false},{"id":193,"row":9,"col":13,"state":false},{"id":194,"row":9,"col":14,"state":false},{"id":195,"row":9,"col":15,"state":false},{"id":196,"row":9,"col":16,"state":false},{"id":197,"row":9,"col":17,"state":false},{"id":198,"row":9,"col":18,"state":1},{"id":199,"row":9,"col":19,"state":false},{"id":200,"row":10,"col":0,"state":false},{"id":201,"row":10,"col":1,"state":1},{"id":202,"row":10,"col":2,"state":false},{"id":203,"row":10,"col":3,"state":false},{"id":204,"row":10,"col":4,"state":false},{"id":205,"row":10,"col":5,"state":false},{"id":206,"row":10,"col":6,"state":1},{"id":207,"row":10,"col":7,"state":1},{"id":208,"row":10,"col":8,"state":1},{"id":209,"row":10,"col":9,"state":1},{"id":210,"row":10,"col":10,"state":1},{"id":211,"row":10,"col":11,"state":1},{"id":212,"row":10,"col":12,"state":1},{"id":213,"row":10,"col":13,"state":1},{"id":214,"row":10,"col":14,"state":1},{"id":215,"row":10,"col":15,"state":1},{"id":216,"row":10,"col":16,"state":1},{"id":217,"row":10,"col":17,"state":1},{"id":218,"row":10,"col":18,"state":1},{"id":219,"row":10,"col":19,"state":false},{"id":220,"row":11,"col":0,"state":false},{"id":221,"row":11,"col":1,"state":1},{"id":222,"row":11,"col":2,"state":1},{"id":223,"row":11,"col":3,"state":false},{"id":224,"row":11,"col":4,"state":false},{"id":225,"row":11,"col":5,"state":1},{"id":226,"row":11,"col":6,"state":1},{"id":227,"row":11,"col":7,"state":false},{"id":228,"row":11,"col":8,"state":false},{"id":229,"row":11,"col":9,"state":false},{"id":230,"row":11,"col":10,"state":false},{"id":231,"row":11,"col":11,"state":false},{"id":232,"row":11,"col":12,"state":false},{"id":233,"row":11,"col":13,"state":true},{"id":234,"row":11,"col":14,"state":false},{"id":235,"row":11,"col":15,"state":false},{"id":236,"row":11,"col":16,"state":false},{"id":237,"row":11,"col":17,"state":false},{"id":238,"row":11,"col":18,"state":false},{"id":239,"row":11,"col":19,"state":false},{"id":240,"row":12,"col":0,"state":false},{"id":241,"row":12,"col":1,"state":1},{"id":242,"row":12,"col":2,"state":1},{"id":243,"row":12,"col":3,"state":false},{"id":244,"row":12,"col":4,"state":false},{"id":245,"row":12,"col":5,"state":1},{"id":246,"row":12,"col":6,"state":1},{"id":247,"row":12,"col":7,"state":1},{"id":248,"row":12,"col":8,"state":1},{"id":249,"row":12,"col":9,"state":1},{"id":250,"row":12,"col":10,"state":1},{"id":251,"row":12,"col":11,"state":1},{"id":252,"row":12,"col":12,"state":1},{"id":253,"row":12,"col":13,"state":1},{"id":254,"row":12,"col":14,"state":1},{"id":255,"row":12,"col":15,"state":1},{"id":256,"row":12,"col":16,"state":false},{"id":257,"row":12,"col":17,"state":false},{"id":258,"row":12,"col":18,"state":false},{"id":259,"row":12,"col":19,"state":false},{"id":260,"row":13,"col":0,"state":false},{"id":261,"row":13,"col":1,"state":1},{"id":262,"row":13,"col":2,"state":false},{"id":263,"row":13,"col":3,"state":false},{"id":264,"row":13,"col":4,"state":false},{"id":265,"row":13,"col":5,"state":false},{"id":266,"row":13,"col":6,"state":1},{"id":267,"row":13,"col":7,"state":1},{"id":268,"row":13,"col":8,"state":false},{"id":269,"row":13,"col":9,"state":false},{"id":270,"row":13,"col":10,"state":false},{"id":271,"row":13,"col":11,"state":false},{"id":272,"row":13,"col":12,"state":false},{"id":273,"row":13,"col":13,"state":false},{"id":274,"row":13,"col":14,"state":false},{"id":275,"row":13,"col":15,"state":1},{"id":276,"row":13,"col":16,"state":1},{"id":277,"row":13,"col":17,"state":1},{"id":278,"row":13,"col":18,"state":false},{"id":279,"row":13,"col":19,"state":false},{"id":280,"row":14,"col":0,"state":false},{"id":281,"row":14,"col":1,"state":1},{"id":282,"row":14,"col":2,"state":1},{"id":283,"row":14,"col":3,"state":false},{"id":284,"row":14,"col":4,"state":false},{"id":285,"row":14,"col":5,"state":false},{"id":286,"row":14,"col":6,"state":1},{"id":287,"row":14,"col":7,"state":1},{"id":288,"row":14,"col":8,"state":1},{"id":289,"row":14,"col":9,"state":1},{"id":290,"row":14,"col":10,"state":1},{"id":291,"row":14,"col":11,"state":1},{"id":292,"row":14,"col":12,"state":1},{"id":293,"row":14,"col":13,"state":1},{"id":294,"row":14,"col":14,"state":false},{"id":295,"row":14,"col":15,"state":false},{"id":296,"row":14,"col":16,"state":false},{"id":297,"row":14,"col":17,"state":1},{"id":298,"row":14,"col":18,"state":false},{"id":299,"row":14,"col":19,"state":false},{"id":300,"row":15,"col":0,"state":false},{"id":301,"row":15,"col":1,"state":false},{"id":302,"row":15,"col":2,"state":1},{"id":303,"row":15,"col":3,"state":1},{"id":304,"row":15,"col":4,"state":1},{"id":305,"row":15,"col":5,"state":false},{"id":306,"row":15,"col":6,"state":false},{"id":307,"row":15,"col":7,"state":false},{"id":308,"row":15,"col":8,"state":false},{"id":309,"row":15,"col":9,"state":false},{"id":310,"row":15,"col":10,"state":false},{"id":311,"row":15,"col":11,"state":false},{"id":312,"row":15,"col":12,"state":false},{"id":313,"row":15,"col":13,"state":false},{"id":314,"row":15,"col":14,"state":false},{"id":315,"row":15,"col":15,"state":1},{"id":316,"row":15,"col":16,"state":1},{"id":317,"row":15,"col":17,"state":1},{"id":318,"row":15,"col":18,"state":false},{"id":319,"row":15,"col":19,"state":false},{"id":320,"row":16,"col":0,"state":false},{"id":321,"row":16,"col":1,"state":false},{"id":322,"row":16,"col":2,"state":false},{"id":323,"row":16,"col":3,"state":false},{"id":324,"row":16,"col":4,"state":1},{"id":325,"row":16,"col":5,"state":1},{"id":326,"row":16,"col":6,"state":1},{"id":327,"row":16,"col":7,"state":1},{"id":328,"row":16,"col":8,"state":1},{"id":329,"row":16,"col":9,"state":1},{"id":330,"row":16,"col":10,"state":1},{"id":331,"row":16,"col":11,"state":1},{"id":332,"row":16,"col":12,"state":1},{"id":333,"row":16,"col":13,"state":1},{"id":334,"row":16,"col":14,"state":1},{"id":335,"row":16,"col":15,"state":1},{"id":336,"row":16,"col":16,"state":false},{"id":337,"row":16,"col":17,"state":false},{"id":338,"row":16,"col":18,"state":1},{"id":339,"row":16,"col":19,"state":false},{"id":340,"row":17,"col":0,"state":false},{"id":341,"row":17,"col":1,"state":false},{"id":342,"row":17,"col":2,"state":false},{"id":343,"row":17,"col":3,"state":1},{"id":344,"row":17,"col":4,"state":1},{"id":345,"row":17,"col":5,"state":false},{"id":346,"row":17,"col":6,"state":1},{"id":347,"row":17,"col":7,"state":false},{"id":348,"row":17,"col":8,"state":false},{"id":349,"row":17,"col":9,"state":false},{"id":350,"row":17,"col":10,"state":false},{"id":351,"row":17,"col":11,"state":false},{"id":352,"row":17,"col":12,"state":false},{"id":353,"row":17,"col":13,"state":1},{"id":354,"row":17,"col":14,"state":false},{"id":355,"row":17,"col":15,"state":1},{"id":356,"row":17,"col":16,"state":1},{"id":357,"row":17,"col":17,"state":1},{"id":358,"row":17,"col":18,"state":1},{"id":359,"row":17,"col":19,"state":false},{"id":360,"row":18,"col":0,"state":false},{"id":361,"row":18,"col":1,"state":false},{"id":362,"row":18,"col":2,"state":0},{"id":363,"row":18,"col":3,"state":1},{"id":364,"row":18,"col":4,"state":false},{"id":365,"row":18,"col":5,"state":false},{"id":366,"row":18,"col":6,"state":1},{"id":367,"row":18,"col":7,"state":false},{"id":368,"row":18,"col":8,"state":1},{"id":369,"row":18,"col":9,"state":1},{"id":370,"row":18,"col":10,"state":1},{"id":371,"row":18,"col":11,"state":1},{"id":372,"row":18,"col":12,"state":1},{"id":373,"row":18,"col":13,"state":1},{"id":374,"row":18,"col":14,"state":false},{"id":375,"row":18,"col":15,"state":false},{"id":376,"row":18,"col":16,"state":1},{"id":377,"row":18,"col":17,"state":1},{"id":378,"row":18,"col":18,"state":1},{"id":379,"row":18,"col":19,"state":false},{"id":380,"row":19,"col":0,"state":false},{"id":381,"row":19,"col":1,"state":false},{"id":382,"row":19,"col":2,"state":0},{"id":383,"row":19,"col":3,"state":1},{"id":384,"row":19,"col":4,"state":false},{"id":385,"row":19,"col":5,"state":false},{"id":386,"row":19,"col":6,"state":false},{"id":387,"row":19,"col":7,"state":false},{"id":388,"row":19,"col":8,"state":false},{"id":389,"row":19,"col":9,"state":false},{"id":390,"row":19,"col":10,"state":false},{"id":391,"row":19,"col":11,"state":false},{"id":392,"row":19,"col":12,"state":false},{"id":393,"row":19,"col":13,"state":false},{"id":394,"row":19,"col":14,"state":false},{"id":395,"row":19,"col":15,"state":false},{"id":396,"row":19,"col":16,"state":false},{"id":397,"row":19,"col":17,"state":false},{"id":398,"row":19,"col":18,"state":false},{"id":399,"row":19,"col":19,"state":false}];
+            mazeData.rowLength = 20;
+            mazeData.colLength = 20;
+            mazeData.cellCount = 400;
+            // for (var i=0;i<mazeData.cellCount;i++){
+            //     mazeData.push({id:temp.id, row:temp.row, col:temp.col, state:temp.state});
+            //     temp.id++;
+            //     temp.col++;
+            //     if (temp.col>=mazeData.colLength){
+            //         temp.col=0;
+            //         temp.row++;
+            //     }
+            // }
+            //初始化机器人数据
+            var robotTemp = {id:0,step:[]};
+            var robots = [];
+            var dirs = ['上','下','左','右'];
+            for (var i=0;i<200;i++){
+                var robot = {id:i, pos:{row:0,col:0,id:0},escaped:false, stepCount:0, path:[]};
+                robots.push(robot);
+            }
+            var mazeVue = new Vue({
+                el: '#mazeWrapper',
+                data: {
+                    items: mazeData,
+                    digState: 1,
+                    msg:"我知道界面很丑, 不要在意这些细节...   点击'开始死亡竞技'就可以召集机器人走迷宫, 选'挖通道'然后在迷宫上点击,可以开辟新的通道, 选'填'通道可以把已经存在的通道堵住. 起点(入口)一定要从最下面一排开始, 终点(出口)可以在任何边界上",
+                    escaped:false,
+                    escapedRobots:[],
+                    selectedEscapedRobot:null,
+                    startTime:0
+                },
+                methods: {
+                    onTouchStart: function (event) {
+                        // 本来想根据手指第一个点的位置是不是通道,来决定挖通道还是填通道, 后来试了试,效果不好
+                        // var index = findTouchData(event);
+                        // if (index){
+                        //     var data = this.items[index];
+                        //     this.digState =  !data.state;
+                        // }
+                    },
+                    onTouch: function (event) {
+                        var index = findTouchData(event);
+                        if (index){
+                            var data = this.items[index];
+                            data.state = this.digState;
+                        }
+                        event.stopPropagation();
+                        event.preventDefault();
+                    },
+                    onDig: function(){
+                        this.digState = 1;
+                    },
+                    onFill: function(){
+                        this.digState = 0;
+                    },
+                    onStart: function(){
+                        var startCell = findStart(mazeData);
+                        if (!startCell){
+                            this.showInfo("必须在迷宫底端挖一个入口才能开始哦!");
+                            return;
+                        }
+
+                        //如果已经存在逃亡记录了, 那么以原来胜利逃亡的为基础,重新生成将近200个机器人
+                        if (this.escaped){
+                            var scale = Math.floor(robots.length / this.escapedRobots.length);  //克隆
+                            for (var i=0;i<this.escapedRobots.length;i++){
+                                for (var k=0;k<scale;k++){
+                                    var index = i*scale + k;
+                                    var robot = robots[index];
+                                    robot.toRefind = true;
+                                    robot.path = this.escapedRobots[i].path.slice();
+                                    robot.escaped = false;
+                                    robot.stepCount = 0;
+                                }
+                            }
+                            robots = robots.slice(0, this.escapedRobots.length*scale);
+                            this.showInfo("优化生成的"+robots.length+"个机器人正在逃亡...");
+                        }else{
+                            this.showInfo("新生的"+robots.length+"个机器人正在逃亡...");
+                        }
+
+                        //清空逃亡组,重新寻路
+                        this.escapedRobots = [];
+
+                        //寻路
+                        var survivedRobots = [];
+                        for (var i=0; i<robots.length; i++){
+                            var robot = robots[i];
+                            findPath(mazeData, startCell, robot);
+                            console.log("id:"+robot.id+", stepCount:"+robot.stepCount+", escaped:"+robot.escaped+", path:"+robot.path);
+                            if (robot.escaped){
+                                survivedRobots.push(robot);
+                            }
+                        }
+                        this.startTime++;
+
+                        //把逃出的机器人按步数排序
+                        survivedRobots.sort(function(a,b){
+                            return a.stepCount - b.stepCount;    // -1 升序排列
+                        })
+
+                        //取前10名优胜者
+                        var top10Robots = survivedRobots.slice(0,10);
+                        this.showInfo(top10Robots.length+"名优胜者逃出生天:");
+                        if (top10Robots.length>0){
+                            this.escaped = true;
+                            this.escapedRobots = JSON.parse(JSON.stringify(top10Robots));
+                        }
+
+                    },
+                    showInfo: function(msg){
+                        this.msg = msg;
+                    },
+                    drawPath: function(robot){
+                        for (var i=0; i<mazeData.length; i++){
+                            var cell = mazeData[i];
+                            cell.route = 0;
+                        }
+                        for (var i=0; i< robot.path.length; i++){
+                            var step = robot.path[i];
+                            var cell = mazeData[step]
+                            cell.route = 1;
+                        }
+                        
+                    }
+                },
+                watch: {
+                    selectedEscapedRobot: function(val) {
+                        var id = val;
+                        var robot = robots[id];
+                        this.drawPath(robot);
+                    }
+                }
+
+
+            });
+
+
+            function findTouchData(event){
+                if (!event.touches){
+                    return null;
+                }
+                if (!event.touches[0]){
+                    return null;
+                }
+                var elem = document.elementFromPoint(event.touches[0].clientX, event.touches[0].clientY);
+
+                var index = parseInt(elem.id, 10);
+                return index;
+            }
+
+            function findStart(mazeData){
+                var cell;
+                for (var i=399; i>379; i--){
+                    cell = mazeData[i];
+                    if (cell.state == 1){
+                        break;
+                    }
+                }
+                if (cell.state==1){
+                    return cell;
+                }
+                return null;
+            }
+
+            function findPath(mazeData, startCell, robot){
+                var curPos = {
+                    row : startCell.row,
+                    col : startCell.col,
+                    id : startCell.id
+                };
+                robot.pos = curPos;
+
+                var lastPos = {col:-1,row:-1,id:-1};
+                robot.stepCount=0;
+                for (var i=0;i<100;i++){
+                    if (robot.toRefind){    //如果不是第一次寻路了,那么基本上依据原来的路径行走
+                        if (i>=robot.path.length){ //如果把原来的步数都走完了, 就继续正常寻路
+                            var targetPos = moveOnce(mazeData, curPos, lastPos, startCell);
+                        }else{
+                            var nextId = robot.path[i];
+                            //以一定概率进行随机扰动
+                            var disturb = Math.random();
+                            if (disturb>0 && disturb<0.05 ){ //如果扰动成功,那么下一步就独立判断如何走动
+                                var targetPos = moveOnce(mazeData, curPos, lastPos, startCell);
+                                if (targetPos.id!=nextId){  //一旦扰动后的步骤跟原来不同, 上一轮记录的路径, 本步之后的部分就可以抛弃了
+                                    robot.path = robot.path.slice(0,robot.stepCount+1);
+                                }
+                            }else{  //如果扰动不成功,就依据之前的路径记录行走
+                                var targetPos = {id:nextId,
+                                                row: Math.floor(nextId / mazeData.colLength),
+                                                col: nextId % mazeData.colLength };
+                                targetPos.escaped = checkStepOut(targetPos);
+                            }
+                        }
+                    }else{  //如果是第一次寻路,那么正常进行下一步的寻路判断
+                        var targetPos = moveOnce(mazeData, curPos, lastPos, startCell);
+                    }
+
+                    if (targetPos.escaped){
+                        robot.escaped = true;
+                        robot.path = robot.path.slice(0, robot.stepCount+1);  //如果不是第一次寻路,有可能提前找到合适的出口
+                        break;
+                    }
+                    if (targetPos.failed){
+                        robot.failed = true;
+                        break;
+                    }
+                    robot.pos = targetPos;
+                    if (robot.path.length>robot.stepCount){
+                        robot.path[robot.stepCount] = targetPos.id;
+                    }else{
+                        robot.path.push(targetPos.id);
+                    }
+                    lastPos = curPos;
+                    curPos = targetPos;
+                    robot.stepCount++;
+
+                }
+            }
+
+            function moveOnce(mazeData, curPos, lastPos, startCell)
+            {
+                var optionalTargets=[];
+                for (var k=0; k<dirs.length; k++){
+                    var targetPos = getTargetPosByDir(curPos, dirs[k]);
+                    //检查是否可以移动
+                    var movable = checkMovable(mazeData, targetPos, curPos, startCell);
+                    switch(movable){
+                        case 1: //可以正常移动
+                            optionalTargets.push(targetPos);
+                        case 0: //撞墙
+                            continue;
+                        case -1: //出口
+                            return {escaped:true};
+                    };
+                }
+
+                if (optionalTargets.length==0){ //无路可走了
+                    return {failed:true};
+                }
+                if (optionalTargets.length==1){ //只有一条路的话,无论如何只能走它了
+                    return optionalTargets[0];
+                }else{
+                    do{ //从可选道路中,随机选一个,但除非没有别的路可走(死胡同到头),不会退回上一步
+                        var selectedTarget = optionalTargets[Math.floor(Math.random()*optionalTargets.length)];
+                    }while(selectedTarget.id==lastPos.id)
+                    return selectedTarget;
+                }
+            }
+
+            function getTargetPosByDir(curPos, dir)
+            {
+                switch (dir){
+                    case '上':
+                        var targetPos = {
+                            row:curPos.row - 1,
+                            col:curPos.col,
+                            id: curPos.id - 20
+                        };
+                        break;
+                    case '下':
+                        var targetPos = {
+                            row:curPos.row + 1,
+                            col:curPos.col,
+                            id: curPos.id + 20
+                        };
+                        break;
+                    case '左':
+                        var targetPos = {
+                            row:curPos.row,
+                            col:curPos.col - 1,
+                            id: curPos.id - 1
+                        };
+                        break;
+                    case '右':
+                        var targetPos = {
+                            row:curPos.row,
+                            col:curPos.col + 1,
+                            id: curPos.id + 1
+                        };
+                        break;
+                }
+                return targetPos;
+            }
+
+            function checkMovable(mazeData, targetPos, curPos, startPos){
+                // console.log(curPos);
+                if (startPos.id == curPos.id && targetPos.row>=20){
+                    return 0;   //凡是想从入口出去的, 都视为撞墙
+                }
+                if (checkStepOut(targetPos)) {
+                    return -1;  //碰到出口了
+                }
+                //console.log(targetPos.id);
+                //console.log(mazeData[targetPos.id]);
+                if (!mazeData[targetPos.id]){
+                    console.log(targetPos);
+                    console.log(targetPos.id);
+                }
+                if (mazeData[targetPos.id].state==0){
+                    return 0;   //真的撞墙了
+                }
+                return 1; //可以正常移动
+            }
+
+            function checkStepOut(targetPos){
+                if (targetPos.row>=20 || targetPos.row<0 || targetPos.col<0 || targetPos.col>=20) {
+                    return true;  //碰到出口了
+                }else{
+                    return false;   
+                }
+            }
+        }
+    </script>
+</html>
