@@ -99,7 +99,7 @@
                     <button v-on:click="onDig()">挖通道</button>
                     <button v-on:click="onFill()">填通道</button>
                 </div>
-                <button id="start" v-on:click="onStart()" >开始死亡竞技</button>
+                <button id="start" v-on:click="onStart()" >{{startTitle}}</button>
             </div>
             <div id="robots-area">
                 <div id="progress-info">{{msg}}</div>
@@ -150,7 +150,8 @@
                     escaped:false,
                     escapedRobots:[],
                     selectedEscapedRobot:null,
-                    startTime:0
+                    startTime:0,
+                    startTitle:"开始死亡竞技"
                 },
                 methods: {
                     onTouchStart: function (event) {
@@ -229,7 +230,7 @@
                             this.escaped = true;
                             this.escapedRobots = JSON.parse(JSON.stringify(top10Robots));
                         }
-
+                        this.startTitle = "开始下一轮死亡竞技";
                     },
                     showInfo: function(msg){
                         this.msg = msg;
